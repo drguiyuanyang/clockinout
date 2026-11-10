@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3A5B8C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ClockIn&amp;Out">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>ClockIn&amp;Out</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title-row">
+      <h1>ClockIn&amp;Out</h1>
+      <button type="button" class="help-btn" id="helpBtn" aria-label="How to">?</button>
+      <button type="button" class="help-btn sparkle" id="teamsBtn" aria-label="More features coming">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0c.4 2.15 1.05 3.7 2.55 5.2C11.05 6.7 13.4 7.55 16 8c-2.6.45-4.95 1.3-5.45 2.8C9.05 12.3 8.4 13.85 8 16c-.4-2.15-1.05-3.7-2.55-5.2C4.95 9.3 2.6 8.45 0 8c2.6-.45 4.95-1.3 5.45-2.8C6.95 3.7 7.6 2.15 8 0z"/></svg>
+      </button>
+    </div>
+    <button type="button" class="another-task" id="anotherTaskBtn">Another task</button>
+  </div>
+
+  <div id="cards"></div>
+  <div class="totals-row" id="totals"></div>
+  <div class="section-head"><h2>Records</h2></div>
+  <div class="records" id="records"></div>
+  <div class="empty hidden" id="emptyMsg">No records yet</div>
+
+  <div class="actions-bar">
+    <button type="button" class="btn-secondary" id="exportBtn">Export CSV</button>
+    <button type="button" class="btn-secondary" id="addMissedBtn">Add missed shift</button>
+  </div>
+</div>
+
+<div id="overlay" class="hidden">
+  <div class="backdrop" id="backdrop"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
+<div id="helpOverlay" class="hidden">
+  <div class="backdrop" id="helpBackdrop"></div>
+  <div class="help-pop" id="helpPop" role="dialog" aria-label="How to">
+    <h3>How to</h3>
+    <p>Clock In starts the clock. Clock Out saves the shift.</p>
+    <p>You can edit a record for 7 days. After that, tick Not accurate and enter the corrected hours. A stamp is saved.</p>
+    <p>Another task starts a second job.</p>
+    <p>Export saves a spreadsheet.</p>
+    <p>To add this to your home screen: on iPhone, open Safari, tap Share, then Add to Home Screen.</p>
+    <p>Android: in Chrome, tap <span class="kbd-menu">⋮</span> (top right), then Add to Home screen or Install app, then Install.</p>
+    <button type="button" class="install-btn hidden" id="installAppBtn">Install app</button>
+  </div>
+</div>
+
+<div id="teamsOverlay" class="hidden">
+  <div class="backdrop" id="teamsBackdrop"></div>
+  <div class="teams-sheet" id="teamsSheet" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <h3>ClockIn&amp;Out for Teams: coming soon?</h3>
+      <button class="close-x" type="button" id="teamsClose" aria-label="Close">×</button>
+    </div>
+    <p class="intro">Whether you manage staff, coach trainees or work with clients, ClockIn&amp;Out for Teams would let you see their hours first-hand and on time.</p>
+    <ul>
+      <li>Invite up to 50 people with a QR code or link.</li>
+      <li>Their work hours sync to you automatically.</li>
+      <li>Allow members to modify if there were mistakes.</li>
+      <li>Strict time stamp function to ensure reliable check-ins.</li>
+      <li>Optional Wi-Fi- or GPS-based guarantee of physical attendance.</li>
+      <li>Leave tracking for each person.</li>
+      <li>Allow flexible rosters for team members.</li>
+      <li>All at a small price, without the tedious admin.</li>
+    </ul>
+    <div class="thumbs">
+      <button type="button" class="thumb" data-act="zoom-thumb" data-src="img/team-invite.png"><img src="img/team-invite.png" alt=""></button>
+      <button type="button" class="thumb" data-act="zoom-thumb" data-src="img/team-hours.jpg"><img src="img/team-hours.jpg" alt=""></button>
+      <button type="button" class="thumb" data-act="zoom-thumb" data-src="img/team-roster.jpg"><img src="img/team-roster.jpg" alt=""></button>
+    </div>
+    <div class="q">
+      <div class="q-label">1) Would you use it if it were available?<span class="req">*</span></div>
+      <div class="seg" id="q1seg">
+        <button type="button" class="seg-opt" data-act="q1" data-val="Yes">Yes</button>
+        <button type="button" class="seg-opt" data-act="q1" data-val="No">No</button>
+      </div>
+    </div>
+    <div class="q">
+      <div class="q-label">2) How much would you pay? (optional)</div>
+      <div class="choices" id="q2choices">
+        <button type="button" class="choice" data-act="q2" data-val="US$29 for 3 months to try"><span class="radio"></span><span>US$29 for 3 months to try</span></button>
+        <button type="button" class="choice" data-act="q2" data-val="US$49 for 6 months"><span class="radio"></span><span>US$49 for 6 months</span></button>
+        <button type="button" class="choice" data-act="q2" data-val="US$99 a year"><span class="radio"></span><span>US$99 a year</span></button>
+      </div>
+    </div>
+    <div class="q">
+      <div class="q-label">3) Which features are you hoping for? (optional)</div>
+      <textarea id="q3text"></textarea>
+    </div>
+    <div class="q">
+      <div class="q-label">4) Your email, if you'd like to hear back from us (optional)</div>
+      <input type="email" id="q4email" value="" autocomplete="email">
+    </div>
+    <button class="btn-primary" type="button" id="teamsSend">Send</button>
+    <div class="thanks hidden" id="teamsThanks">Thanks! We got your feedback.</div>
+  </div>
+  <div class="lightbox hidden" id="lightbox">
+    <button class="close-x" type="button" id="lightboxClose" aria-label="Close">×</button>
+    <img id="lightboxImg" alt="">
+  </div>
+</div>
+
+<div id="newsOverlay" class="hidden">
+  <div class="backdrop" id="newsBackdrop"></div>
+  <div class="news-card" id="newsCard" role="dialog" aria-modal="true">
+    <h3 id="newsTitle"></h3>
+    <p id="newsBody"></p>
+    <button class="btn-primary" type="button" id="newsOk">OK</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
