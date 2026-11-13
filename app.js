@@ -204,10 +204,14 @@
     return t ? t.name : (id === MAIN_ID ? MAIN_NAME : 'Task');
   }
 
-  function buildCheckoutISO(dateStr, inTime, outTime) {
+  function buildCheckoutISO(dateStr, inTime, outTime, nextDay) {
     const checkIn = combineLocal(dateStr, inTime);
     let checkOut = combineLocal(dateStr, outTime);
-    if (outTime < inTime) checkOut.setDate(checkOut.getDate() + 1);
+    if (typeof nextDay === 'boolean') {
+      if (nextDay) checkOut.setDate(checkOut.getDate() + 1);
+    } else if (outTime < inTime) {
+      checkOut.setDate(checkOut.getDate() + 1);
+    }
     return { checkIn, checkOut };
   }
 
@@ -573,7 +577,7 @@
 
   function openEditRecent(rec) {
     sheetMode = 'edit-recent';
-    const overnight = isOvernightRec(rec);
+    const plusOn = isOvernightRec(rec);
     const taskOpts = tasks.map(t =>
       '<option value="' + esc(t.id) + '"' + (t.id === rec.taskId ? ' selected' : '') + '>' + esc(t.name) + '</option>'
     ).join('');
@@ -584,30 +588,53 @@
       '<div class="field"><label>Clock in</label><input type="time" id="edIn" value="' + esc(fmtTime(rec.checkIn)) + '"></div>' +
       '<div class="field"><label>Clock out</label><div class="field-row">' +
       '<input type="time" id="edOut" value="' + esc(fmtTime(rec.checkOut)) + '">' +
-      '<span class="badge-nextday' + (overnight ? '' : ' hidden') + '" id="edPlus">+1 day</span></div></div>' +
+      '<button type="button" class="toggle-nextday' + (plusOn ? ' on' : '') + '" id="edPlus" aria-pressed="' + (plusOn ? 'true' : 'false') + '"><span class="mini-box">' + (plusOn ? '✓' : '') + '</span><span>+1 day</span></button></div></div>' +
       '<div class="computed"><span class="lbl">Hours</span><span class="val" id="edHours">' + effectiveHours(rec).toFixed(1) + ' h</span></div>' +
       '<div class="sheet-actions">' +
       '<button type="button" class="btn-primary" data-act="save-recent" data-id="' + esc(rec.id) + '">Save</button>' +
       '<button type="button" class="btn-cancel" data-act="close">Cancel</button>' +
       '<button type="button" class="btn-danger-text" data-act="delete-ask" data-id="' + esc(rec.id) + '">Delete</button></div>'
     );
-    wireOvernightPreview();
+    wirePlusDayPreview('edIn', 'edOut', 'edDate', 'edPlus', 'edHours');
   }
 
-  function wireOvernightPreview() {
-    const inEl = document.getElementById('edIn');
-    const outEl = document.getElementById('edOut');
-    const dateEl = document.getElementById('edDate');
-    const plus = document.getElementById('edPlus');
-    const hoursEl = document.getElementById('edHours');
-    if (!inEl || !outEl) return;
+  function setPlusToggle(btn, on) {
+    if (!btn) return;
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const box = btn.querySelector('.mini-box');
+    if (box) box.textContent = on ? '✓' : '';
+  }
+
+  function wirePlusDayPreview(inId, outId, dateId, plusId, hoursId) {
+    const inEl = document.getElementById(inId);
+    const outEl = document.getElementById(outId);
+    const dateEl = document.getElementById(dateId);
+    const plus = document.getElementById(plusId);
+    const hoursEl = document.getElementById(hoursId);
+    if (!inEl || !outEl || !dateEl || !plus || !hoursEl) return;
+    let plusOn = plus.classList.contains('on');
+    let userToggled = false;
     const upd = () => {
-      const overnight = isOvernightTimes(inEl.value, outEl.value);
-      if (plus) plus.classList.toggle('hidden', !overnight);
-      if (dateEl && dateEl.value && inEl.value && outEl.value) {
-        const { checkIn, checkOut } = buildCheckoutISO(dateEl.value, inEl.value, outEl.value);
-        hoursEl.textContent = round2(hoursBetween(checkIn, checkOut)).toFixed(1) + ' h';
+      if (!userToggled && inEl.value && outEl.value) {
+        if (isOvernightTimes(inEl.value, outEl.value)) plusOn = true;
       }
+      setPlusToggle(plus, plusOn);
+      if (dateEl.value && inEl.value && outEl.value) {
+        const { checkIn, checkOut } = buildCheckoutISO(dateEl.value, inEl.value, outEl.value, plusOn);
+        if (checkOut <= checkIn) {
+          hoursEl.textContent = '—';
+          hoursEl.classList.add('invalid');
+        } else {
+          hoursEl.textContent = round2(hoursBetween(checkIn, checkOut)).toFixed(1) + ' h';
+          hoursEl.classList.remove('invalid');
+        }
+      }
+    };
+    plus.onclick = () => {
+      plusOn = !plusOn;
+      userToggled = true;
+      upd();
     };
     inEl.oninput = outEl.oninput = dateEl.oninput = upd;
   }
@@ -645,23 +672,13 @@
       '<div class="field"><label>Clock in</label><input type="time" id="amIn" value="09:00"></div>' +
       '<div class="field"><label>Clock out</label><div class="field-row">' +
       '<input type="time" id="amOut" value="17:00">' +
-      '<span class="badge-nextday hidden" id="amPlus">+1 day</span></div></div>' +
+      '<button type="button" class="toggle-nextday" id="amPlus" aria-pressed="false"><span class="mini-box"></span><span>+1 day</span></button></div></div>' +
       '<div class="computed"><span class="lbl">Hours</span><span class="val" id="amHours">8.0 h</span></div>' +
       '<div class="sheet-actions">' +
       '<button type="button" class="btn-primary" data-act="save-missed">Save</button>' +
       '<button type="button" class="btn-cancel" data-act="close">Cancel</button></div>'
     );
-    const upd = () => {
-      const inV = document.getElementById('amIn').value;
-      const outV = document.getElementById('amOut').value;
-      const date = document.getElementById('amDate').value;
-      document.getElementById('amPlus').classList.toggle('hidden', !isOvernightTimes(inV, outV));
-      if (date && inV && outV) {
-        const { checkIn, checkOut } = buildCheckoutISO(date, inV, outV);
-        document.getElementById('amHours').textContent = round2(hoursBetween(checkIn, checkOut)).toFixed(1) + ' h';
-      }
-    };
-    document.getElementById('amIn').oninput = document.getElementById('amOut').oninput = document.getElementById('amDate').oninput = upd;
+    wirePlusDayPreview('amIn', 'amOut', 'amDate', 'amPlus', 'amHours');
   }
 
   function openDeleteConfirm(id) {
@@ -1092,7 +1109,9 @@
       const outV = document.getElementById('edOut').value;
       if (!date || !inV || !outV) return;
       const t = tasks.find(x => x.id === taskId);
-      const { checkIn, checkOut } = buildCheckoutISO(date, inV, outV);
+      const plusOn = document.getElementById('edPlus').classList.contains('on');
+      const { checkIn, checkOut } = buildCheckoutISO(date, inV, outV, plusOn);
+      if (checkOut <= checkIn) { toast('Clock out must be after Clock in'); return; }
       rec.taskId = taskId;
       rec.taskName = t ? t.name : taskName(taskId);
       rec.date = date;
@@ -1145,7 +1164,9 @@
       if (!date || date < min || date > max) { toast('Date must be within 7 days'); return; }
       if (!inV || !outV) return;
       const t = tasks.find(x => x.id === taskId);
-      const { checkIn, checkOut } = buildCheckoutISO(date, inV, outV);
+      const plusOn = document.getElementById('amPlus').classList.contains('on');
+      const { checkIn, checkOut } = buildCheckoutISO(date, inV, outV, plusOn);
+      if (checkOut <= checkIn) { toast('Clock out must be after Clock in'); return; }
       if (taskId !== MAIN_ID && t) rememberExtraName(t.name);
       records.unshift({
         id: uid(),
